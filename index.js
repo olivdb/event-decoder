@@ -7,14 +7,14 @@ const fs = require("fs");
 const { pick, pickBy } = require("ramda");
 const { inspect } = require("util");
 
-const web3 = new Web3(new Web3.providers.HttpProvider(`https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`));
-const rawTransferMgrAbi = JSON.parse(fs.readFileSync(__dirname + "/abi/1.6.0/TransferManager.json")).abi;
-const transferMgrAbi = rawTransferMgrAbi.filter((e) => e.type === "function" || e.type === "event");
-
-// const MODULE = "0x2b6d87f12b106e1d3fa7137494751566329d1045"; // 1.4.5
-const MODULE = "0x103675510a219bd84CE91d1bcb82Ca194D665a09"; // 1.6.0+
+const MODULE = "TransferManager";
+const VERSION = "1.4.5";
 const WALLET = "0xc4d46ecbc83f41d0bf71a39868d3f830299068b8";
 const METHOD = "addModule";
+
+const web3 = new Web3(new Web3.providers.HttpProvider(`https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`));
+const rawTransferMgrAbi = JSON.parse(fs.readFileSync(`${__dirname}/abi/${VERSION}/${MODULE}.json`)).abi;
+const transferMgrAbi = rawTransferMgrAbi.filter((e) => e.type === "function" || e.type === "event");
 
 function decodeInput(input, abi = transferMgrAbi) {
   const fun = abi.find((e) => web3.eth.abi.encodeFunctionSignature(e) === input.slice(0, 10));
@@ -24,6 +24,21 @@ function decodeInput(input, abi = transferMgrAbi) {
     return { funName: fun.name, funInput: cleanedInput };
   }
   return null;
+}
+
+async function getModuleAddress(moduleName, version) {
+  const backend = axios.create({
+    baseURL: process.env.MODULE_ENDPOINT,
+    timeout: 10000,
+  });
+
+  const { versions } = (
+    await backend.get("", {
+      params: {},
+    })
+  ).data;
+
+  return versions.find((v) => v.version === version).modules.find((m) => m.name === moduleName).address;
 }
 
 async function getFunctionInfo(log) {
@@ -54,6 +69,7 @@ function decodeTopics(log, abi = transferMgrAbi) {
 }
 
 async function main() {
+  const moduleAddress = await getModuleAddress(MODULE, VERSION);
   const etherscan = axios.create({
     baseURL: "https://api.etherscan.io",
     timeout: 10000,
@@ -67,7 +83,7 @@ async function main() {
         apikey: process.env.ETHERSCAN_API_KEY,
         fromBlock: "10320000",
         toBlock: "21000000",
-        address: MODULE,
+        address: moduleAddress,
         topic1: web3.utils.padLeft(WALLET, 64),
       },
     })
