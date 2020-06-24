@@ -1,0 +1,17 @@
+{
+  "name": "event-decoder",
+  "version": "1.0.0",
+  "description": "Script that decodes Argent module events",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/olivdb/event-decoder"
+  },
+  "dependencies": {
+    "axios": "^0.19.2",
+    "dotenv": "^8.2.0",
+    "ramda": "^0.27.0",
+    "util": "^0.12.3",
+    "web3": "1.2.1"
+  }
+}
