@@ -1,6 +1,6 @@
 # Argent Module Event Decoder
 
-Simple script to fetch and decode Argent module events.
+Simple script to fetch and decode Argent module events for a wallet.
 
 ## Install
 
