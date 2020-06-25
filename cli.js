@@ -89,7 +89,8 @@ async function getFunctionInfo(log, abi) {
       fun.subFunName = subfun.funName;
       fun.subFunInput = subfun.funInput;
     }
-    fun.success = parseInt(web3.utils.hexToNumberString(log.topics[2]));
+    const txExecutedSig = web3.eth.abi.encodeEventSignature(abi.find((e) => e.name === "TransactionExecuted"));
+    fun.success = log.topics[0] !== txExecutedSig || web3.utils.hexToNumberString(log.topics[2]) !== "0";
   }
   return fun;
 }
@@ -106,7 +107,7 @@ function decodeInput(input, abi) {
 
 function decodeTopics(log, abi) {
   const eventAbi = abi.find((e) => e.type === "event" && web3.eth.abi.encodeEventSignature(e) === log.topics[0]);
-  const decoded = web3.eth.abi.decodeLog(eventAbi.inputs, log.data, log.topics);
+  const decoded = web3.eth.abi.decodeLog(eventAbi.inputs, log.data, log.topics.slice(1));
   const cleaned = pickBy((val, key) => key !== "__length__" && isNaN(parseInt(key)), { ...decoded });
   return { event: { name: eventAbi.name, ...cleaned } };
 }
