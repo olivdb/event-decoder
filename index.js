@@ -1,6 +1,6 @@
 require("dotenv").config();
 const axios = require("axios").default;
-const Web3 = require("web3");
+const web3 = setupWeb3(require("web3"));
 const fs = require("fs");
 const { pick, pickBy } = require("ramda");
 const { inspect } = require("util");
@@ -14,7 +14,10 @@ const FROM_BLOCK = "10000000";
 const TO_BLOCK = "20000000";
 const JSON_OUTPUT = false;
 
-const web3 = new Web3(new Web3.providers.HttpProvider(`https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`));
+function setupWeb3(Web3) {
+  if (!process.env.INFURA_API_KEY) throw new Error("INFURA_API_KEY env var not set");
+  return new Web3(new Web3.providers.HttpProvider(`https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`));
+}
 
 function parseCommandLineArgs() {
   let idx;
@@ -36,6 +39,7 @@ function parseCommandLineArgs() {
 }
 
 async function fetchModuleAddress(moduleName, version) {
+  if (!process.env.MODULE_ENDPOINT) throw new Error("MODULE_ENDPOINT env var not set");
   const { versions } = (
     await axios
       .create({
@@ -48,6 +52,7 @@ async function fetchModuleAddress(moduleName, version) {
 }
 
 async function fetchLogs(moduleAddress, wallet, fromBlock, toBlock) {
+  if (!process.env.ETHERSCAN_API_KEY) throw new Error("ETHERSCAN_API_KEY env var not set");
   return (
     await axios
       .create({
