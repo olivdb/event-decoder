@@ -1,4 +1,5 @@
-require("dotenv").config();
+#!/usr/bin/env node
+require("dotenv").config({ path: `${__dirname}/.env` });
 const axios = require("axios").default;
 const web3 = setupWeb3(require("web3"));
 const fs = require("fs");
