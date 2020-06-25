@@ -4,6 +4,8 @@ Simple script to fetch and decode Argent module events for a wallet.
 
 ## Install
 
+Create a .env file in the root directory and fill it in as in .env.example
+
 ```
 npm i
 ```
