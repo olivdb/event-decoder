@@ -12,6 +12,7 @@ const WALLET = "0xc4d46ecbc83f41d0bf71a39868d3f830299068b8";
 const METHOD = "addModule";
 const FROM_BLOCK = "10000000";
 const TO_BLOCK = "20000000";
+const JSON_OUTPUT = false;
 
 const web3 = new Web3(new Web3.providers.HttpProvider(`https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`));
 
@@ -29,7 +30,9 @@ function parseCommandLineArgs() {
   const fromBlock = idx > -1 ? process.argv[idx + 1] : FROM_BLOCK;
   idx = process.argv.indexOf("--to");
   const toBlock = idx > -1 ? process.argv[idx + 1] : TO_BLOCK;
-  return { moduleName, wallet, version, method, fromBlock, toBlock };
+  idx = process.argv.indexOf("--json");
+  const json = idx > -1 || JSON_OUTPUT;
+  return { moduleName, wallet, version, method, fromBlock, toBlock, json };
 }
 
 async function fetchModuleAddress(moduleName, version) {
@@ -114,7 +117,7 @@ async function decodeLogs(logs, abi) {
 }
 
 async function main() {
-  const { moduleName, wallet, version, method, fromBlock, toBlock } = parseCommandLineArgs();
+  const { moduleName, wallet, version, method, fromBlock, toBlock, json } = parseCommandLineArgs();
 
   const moduleAddress = await fetchModuleAddress(moduleName, version);
   const moduleAbi = JSON.parse(fs.readFileSync(`${__dirname}/abi/${version}/${moduleName}.json`)).abi;
@@ -123,7 +126,8 @@ async function main() {
   const decodedLogs = await decodeLogs(logs, moduleAbi);
   const filteredLogs = decodedLogs.filter((e) => !method || method.length === 0 || e.subFunName === method || e.funName === method);
 
-  console.log(inspect(filteredLogs, { colors: true, depth: 2 }));
+  const output = json ? JSON.stringify(filteredLogs, null, 2) : inspect(filteredLogs, { colors: true, depth: 2 });
+  console.log(output);
 }
 
 main();
