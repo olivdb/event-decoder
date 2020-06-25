@@ -32,7 +32,7 @@ function parseCommandLineArgs() {
   return { moduleName, wallet, version, method, fromBlock, toBlock };
 }
 
-async function getModuleAddress(moduleName, version) {
+async function fetchModuleAddress(moduleName, version) {
   const { versions } = (
     await axios
       .create({
@@ -42,6 +42,27 @@ async function getModuleAddress(moduleName, version) {
       .get()
   ).data;
   return versions.find((v) => v.version === version).modules.find((m) => m.name === moduleName).address;
+}
+
+async function fetchLogs(moduleAddress, wallet, fromBlock, toBlock) {
+  return (
+    await axios
+      .create({
+        baseURL: "https://api.etherscan.io",
+        timeout: 10000,
+      })
+      .get("/api", {
+        params: {
+          module: "logs",
+          action: "getLogs",
+          apikey: process.env.ETHERSCAN_API_KEY,
+          fromBlock: fromBlock,
+          toBlock: toBlock,
+          address: moduleAddress,
+          topic1: web3.utils.padLeft(wallet, 64),
+        },
+      })
+  ).data.result;
 }
 
 function decimalizeValues(log) {
@@ -81,39 +102,25 @@ function decodeTopics(log, abi) {
   return { event: { name: eventAbi.name, ...cleaned } };
 }
 
-async function main() {
-  const { moduleName, wallet, version, method, fromBlock, toBlock } = parseCommandLineArgs();
-
-  const moduleAddress = await getModuleAddress(moduleName, version);
-  const moduleAbi = JSON.parse(fs.readFileSync(`${__dirname}/abi/${version}/${moduleName}.json`)).abi;
-
-  const logs = (
-    await axios
-      .create({
-        baseURL: "https://api.etherscan.io",
-        timeout: 10000,
-      })
-      .get("/api", {
-        params: {
-          module: "logs",
-          action: "getLogs",
-          apikey: process.env.ETHERSCAN_API_KEY,
-          fromBlock: fromBlock,
-          toBlock: toBlock,
-          address: moduleAddress,
-          topic1: web3.utils.padLeft(wallet, 64),
-        },
-      })
-  ).data.result;
-
-  const decodedLogs = await Promise.all(
+async function decodeLogs(logs, abi) {
+  return await Promise.all(
     logs.map(async (log) => {
-      const functionInfo = await getFunctionInfo(log, moduleAbi);
+      const functionInfo = await getFunctionInfo(log, abi);
       const decimalized = decimalizeValues(log);
-      const decodedTopics = decodeTopics(log, moduleAbi);
+      const decodedTopics = decodeTopics(log, abi);
       return { ...log, ...decodedTopics, ...functionInfo, ...decimalized };
     })
   );
+}
+
+async function main() {
+  const { moduleName, wallet, version, method, fromBlock, toBlock } = parseCommandLineArgs();
+
+  const moduleAddress = await fetchModuleAddress(moduleName, version);
+  const moduleAbi = JSON.parse(fs.readFileSync(`${__dirname}/abi/${version}/${moduleName}.json`)).abi;
+
+  const logs = await fetchLogs(moduleAddress, wallet, fromBlock, toBlock);
+  const decodedLogs = await decodeLogs(logs, moduleAbi);
   const filteredLogs = decodedLogs.filter((e) => !method || method.length === 0 || e.subFunName === method || e.funName === method);
 
   console.log(inspect(filteredLogs, { colors: true, depth: 2 }));
